@@ -1,4 +1,7 @@
-import { Prisma, Prioridade, StatusChamado, OrigemClassificacao } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { Prioridade } from '../../enums/Prioridade';
+import { StatusChamado } from '../../enums/StatusChamado';
+import { OrigemClassificacao } from '../../enums/OrigemClassificacao';
 import { prisma } from '../../config/database';
 
 export interface FiltrosChamado {

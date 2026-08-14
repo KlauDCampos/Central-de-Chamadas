@@ -1,5 +1,5 @@
 import { prisma } from '../../config/database';
-import { Papel } from '@prisma/client';
+import { Papel } from '../../enums/Papel';
 
 export const userRepository = {
   findByEmail(email: string) {

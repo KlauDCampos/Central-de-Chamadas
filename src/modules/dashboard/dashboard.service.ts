@@ -14,12 +14,12 @@ export const dashboardService = {
     ]);
 
     const status = { ABERTO: 0, EM_ANDAMENTO: 0, RESOLVIDO: 0, FECHADO: 0 } as Record<string, number>;
-    porStatus.forEach((s: { status: StatusChamado; _count: { _all: number } }) => {
+    porStatus.forEach((s) => {
       status[s.status] = s._count._all;
     });
 
     const prioridade = { BAIXA: 0, MEDIA: 0, ALTA: 0 } as Record<string, number>;
-    porPrioridade.forEach((p: { prioridade: Prioridade; _count: { _all: number } }) => {
+    porPrioridade.forEach((p) => {
       prioridade[p.prioridade] = p._count._all;
     });
 

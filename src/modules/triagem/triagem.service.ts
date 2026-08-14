@@ -1,4 +1,4 @@
-import { Prioridade } from '@prisma/client';
+import { Prioridade } from '../../enums/Prioridade';
 import { env } from '../../config/env';
 
 export interface SugestaoTriagem {

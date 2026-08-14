@@ -2,15 +2,8 @@ import { Router } from 'express';
 import { chamadoController } from './chamado.controller';
 import { authMiddleware, requireRole } from '../../middlewares/auth.middleware';
 import { validate } from '../../middlewares/validate.middleware';
-import {
-  criarChamadoSchema,
-  listarChamadosSchema,
-  atualizarStatusSchema,
-  atribuirResponsavelSchema,
-  corrigirClassificacaoSchema,
-  criarComentarioSchema,
-} from './chamado.schemas';
-
+import {  criarChamadoSchema,listarChamadosSchema,  atualizarStatusSchema,  atribuirResponsavelSchema,  corrigirClassificacaoSchema, } from './chamado.schemas';
+import { criarComentarioSchema } from '../comentarios/comentario.schema';
 const router = Router();
 
 router.use(authMiddleware);
