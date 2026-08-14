@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  api:
+    build: .
+    container_name: helpdesk-api
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      DATABASE_URL: "file:./dev.db"
+      JWT_SECRET: "troque-este-valor-por-um-segredo-forte"
+      JWT_EXPIRES_IN: "1d"
+      TRIAGEM_PROVIDER: "heuristic"
+    volumes:
+      - helpdesk_data:/app/prisma
+
+volumes:
+  helpdesk_data:
