@@ -1,6 +1,5 @@
 import { prisma } from '../../config/database';
-import { StatusChamado } from '../../enums/StatusChamado';
-import {Prioridade} from '../../enums/Prioridade'
+
 
 export const dashboardService = {
   // Contagem de chamados agrupada por status e por prioridade — usada tanto

@@ -37,7 +37,7 @@ export function createApp() {
       }),
     );
  
-    console.log('📚 Documentação Swagger disponível em /docs');
+    console.log('------ Documentação Swagger disponível em /docs ------');
   } catch (error) {
     console.error('❌ Erro ao configurar documentação:', error);
     // Rota de fallback: garante que /docs sempre responda algo, mesmo se o

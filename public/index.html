@@ -1,29 +1,13 @@
 <!DOCTYPE html>
-<html lang="pt-br">
-<head>
-<meta charset="UTF-8" />
-<title>Painel de Chamados - Fadex Helpdesk</title>
-<style>
-  body { font-family: system-ui, Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 32px; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  .sub { color: #94a3b8; margin-bottom: 24px; font-size: 13px; }
-  .login-box { background: #1e293b; padding: 16px; border-radius: 10px; margin-bottom: 24px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;}
-  input { padding: 8px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; }
-  button { padding: 8px 14px; border-radius: 6px; border: none; background: #6366f1; color: white; cursor: pointer; font-weight: 600;}
-  button:hover { background: #4f46e5; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
-  .card { background: #1e293b; border-radius: 12px; padding: 18px; }
-  .card .label { font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em;}
-  .card .value { font-size: 32px; font-weight: 700; margin-top: 6px; }
-  .alta { color: #f87171; }
-  #alertas { display: flex; flex-direction: column; gap: 8px; }
-  .alerta { background: #7f1d1d; border-left: 4px solid #f87171; padding: 10px 14px; border-radius: 6px; font-size: 13px; }
-  .status { font-size: 12px; color: #94a3b8; margin-top: 8px; }
-  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#22c55e; margin-right:6px;}
-</style>
+  <html lang="pt-br">
+  <head>
+  <meta charset="UTF-8" />
+  <title>Painel de Chamados - Fadex Helpdesk</title>
+  <link rel="stylesheet" href="style.css"/>
 </head>
+
 <body>
-  <h1>📊 Painel de Chamados em Tempo Real</h1>
+  <h1>Painel de Chamados em Tempo Real</h1>
   <div class="sub">Diferencial — atualização automática via Server-Sent Events (SSE)</div>
 
   <div class="login-box">
@@ -35,53 +19,53 @@
   <div class="grid" id="statusGrid"></div>
   <div class="grid" id="prioridadeGrid"></div>
 
-  <h3>🚨 Alertas de prioridade ALTA</h3>
+  <h3> Alertas de prioridade ALTA</h3>
   <div id="alertas"><span class="status">Nenhum alerta ainda.</span></div>
 
 <script>
-let evtSource = null;
+  let evtSource = null;
 
-function renderCards(containerId, dados, isPrioridade) {
-  const container = document.getElementById(containerId);
-  container.innerHTML = '';
-  Object.entries(dados).forEach(([chave, valor]) => {
+  function renderCards(containerId, dados, isPrioridade) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    Object.entries(dados).forEach(([chave, valor]) => {
+      const div = document.createElement('div');
+      div.className = 'card';
+      const isAlta = isPrioridade && chave === 'ALTA';
+      div.innerHTML = `<div class="label">${chave.replace('_',' ')}</div><div class="value ${isAlta ? 'alta' : ''}">${valor}</div>`;
+      container.appendChild(div);
+    });
+  }
+
+  function atualizarIndicadores(dados) {
+    renderCards('statusGrid', dados.porStatus, false);
+    renderCards('prioridadeGrid', dados.porPrioridade, true);
+  }
+
+  function adicionarAlerta(msg) {
+    const container = document.getElementById('alertas');
+    if (container.children[0]?.className !== 'alerta') container.innerHTML = '';
     const div = document.createElement('div');
-    div.className = 'card';
-    const isAlta = isPrioridade && chave === 'ALTA';
-    div.innerHTML = `<div class="label">${chave.replace('_',' ')}</div><div class="value ${isAlta ? 'alta' : ''}">${valor}</div>`;
-    container.appendChild(div);
-  });
-}
+    div.className = 'alerta';
+    div.textContent = `${new Date().toLocaleTimeString()} — ${msg}`;
+    container.prepend(div);
+  }
 
-function atualizarIndicadores(dados) {
-  renderCards('statusGrid', dados.porStatus, false);
-  renderCards('prioridadeGrid', dados.porPrioridade, true);
-}
+  function conectar() {
+    const token = document.getElementById('token').value.trim();
+    if (!token) { alert('Cole o token JWT primeiro (faça login via /api/auth/login).'); return; }
+    if (evtSource) evtSource.close();
 
-function adicionarAlerta(msg) {
-  const container = document.getElementById('alertas');
-  if (container.children[0]?.className !== 'alerta') container.innerHTML = '';
-  const div = document.createElement('div');
-  div.className = 'alerta';
-  div.textContent = `${new Date().toLocaleTimeString()} — ${msg}`;
-  container.prepend(div);
-}
+    evtSource = new EventSource(`/api/dashboard/stream?token=${encodeURIComponent(token)}`);
+    const statusEl = document.getElementById('statusConexao');
 
-function conectar() {
-  const token = document.getElementById('token').value.trim();
-  if (!token) { alert('Cole o token JWT primeiro (faça login via /api/auth/login).'); return; }
-  if (evtSource) evtSource.close();
+    evtSource.onopen = () => { statusEl.innerHTML = '<span class="dot"></span>conectado (tempo real)'; };
+    evtSource.onerror = () => { statusEl.innerHTML = '<span class="dot" style="background:#ef4444"></span>erro de conexão'; };
 
-  evtSource = new EventSource(`/api/dashboard/stream?token=${encodeURIComponent(token)}`);
-  const statusEl = document.getElementById('statusConexao');
-
-  evtSource.onopen = () => { statusEl.innerHTML = '<span class="dot"></span>conectado (tempo real)'; };
-  evtSource.onerror = () => { statusEl.innerHTML = '<span class="dot" style="background:#ef4444"></span>erro de conexão'; };
-
-  evtSource.addEventListener('snapshot', (e) => atualizarIndicadores(JSON.parse(e.data)));
-  evtSource.addEventListener('indicadores', (e) => atualizarIndicadores(JSON.parse(e.data)));
-  evtSource.addEventListener('alerta-prioridade-alta', (e) => adicionarAlerta(JSON.parse(e.data).mensagem));
-}
+    evtSource.addEventListener('snapshot', (e) => atualizarIndicadores(JSON.parse(e.data)));
+    evtSource.addEventListener('indicadores', (e) => atualizarIndicadores(JSON.parse(e.data)));
+    evtSource.addEventListener('alerta-prioridade-alta', (e) => adicionarAlerta(JSON.parse(e.data).mensagem));
+  }
 </script>
 </body>
 </html>
