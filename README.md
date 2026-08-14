@@ -93,6 +93,16 @@ mantendo a separação de responsabilidades.
 Ver `prisma/schema.prisma` para o detalhamento de relacionamentos e constraints
 (chaves estrangeiras, `email` único, cascade delete de comentários ao excluir chamado).
 
+> **Nota sobre os campos "enum" (`papel`, `prioridade`, `status`,
+> `origemClassificacao`):** o SQLite não tem suporte nativo a `enum` no Prisma
+> (só PostgreSQL/MySQL/CockroachDB têm). Por isso, esses campos são salvos
+> como `String` no banco, e os valores válidos são garantidos na camada de
+> aplicação por dois mecanismos: os enums TypeScript em `src/enums/` (dão
+> autocomplete e checagem de tipo no código) e os schemas Zod em cada módulo
+> (validam o valor recebido na requisição antes de chegar ao banco). Se o
+> projeto for rodar com PostgreSQL/MySQL, é possível voltar a usar `enum`
+> nativo do Prisma no `schema.prisma`, mas não é obrigatório.
+
 ## Triagem por IA — como funciona e por quê
 
 Por padrão (`TRIAGEM_PROVIDER=heuristic` no `.env`), a classificação automática
@@ -121,13 +131,29 @@ baseado em dicionários de palavras-chave (`src/modules/triagem/triagem.service.
 5. O **ADMIN pode corrigir a sugestão** a qualquer momento via
    `PATCH /api/chamados/:id/classificacao` (a origem passa a `MANUAL`).
 
-**Ponto de extensão para uma IA real:** o arquivo já contém um esqueleto de
-integração com a **Hugging Face Inference API** (`classificarComHuggingFace`,
-usando um modelo de *zero-shot classification*), plugável via
-`TRIAGEM_PROVIDER=huggingface` + `HUGGINGFACE_API_KEY` no `.env`. Se a chave
-não estiver configurada, ou se a chamada externa falhar, o sistema degrada
-automaticamente para a heurística — a criação do chamado nunca quebra por
-causa de uma falha na IA.
+**Ponto de extensão para uma IA real:** o arquivo já contém dois esqueletos de
+integração prontos, plugáveis só trocando a variável `TRIAGEM_PROVIDER` no
+`.env` — nenhuma outra camada da aplicação precisa mudar:
+
+- `TRIAGEM_PROVIDER=huggingface` + `HUGGINGFACE_API_KEY` — usa a **Hugging
+  Face Inference API** (free tier) com um modelo de *zero-shot classification*
+  para sugerir a categoria.
+- `TRIAGEM_PROVIDER=openai` + `OPENAI_API_KEY` (e opcionalmente
+  `OPENAI_MODEL`, padrão `gpt-4o-mini`) — usa a **OpenAI Chat Completions
+  API** com *JSON mode* (`response_format: json_object`) para retornar
+  `categoria`/`prioridade` já estruturados. A resposta do modelo é validada
+  contra as listas de categorias/prioridades permitidas antes de ser usada —
+  nunca se confia cegamente na saída de um LLM.
+
+Em ambos os casos, se a chave não estiver configurada, ou a chamada externa
+falhar (rate limit, indisponibilidade, resposta fora do formato esperado), o
+sistema **degrada automaticamente para a heurística** — a criação do chamado
+nunca quebra por causa de uma falha na IA.
+
+> A OpenAI, diferente da Hugging Face free tier, cobra por uso e exige cartão
+> cadastrado na conta — por isso não é o provider padrão do projeto (mesma
+> barreira que a seção 3.3 do edital reconhece existir em várias APIs de IA
+> gratuitas).
 
 ## Indicadores em tempo real
 
@@ -216,7 +242,16 @@ requisições para todos os endpoints, usando variáveis (`{{baseUrl}}`,
 variáveis da coleção.
 
 ### Opção 2 — Swagger
-Acesse `http://localhost:3000/docs` com a API rodando.
+Acesse `http://localhost:3000/docs` com a API rodando. Para testar rotas
+protegidas (a maioria delas), autentique-se primeiro:
+1. Expanda `POST /api/auth/login`, clique em **"Try it out"**, preencha com
+   um usuário de teste (ex.: `solicitante@fadex.org.br` / `solicitante123`)
+   e clique em **"Execute"**.
+2. Copie o valor do campo `"token"` da resposta.
+3. Clique no botão **"Authorize"** (ícone de cadeado, no topo da página),
+   cole o token e confirme.
+4. A partir daí, todas as requisições feitas pelo Swagger já incluem o token
+   automaticamente no header `Authorization`.
 
 ### Opção 3 — curl
 
@@ -295,6 +330,7 @@ ações restritas a ADMIN), a regra de não reabrir chamado fechado, e resposta
 - [x] Containerização com Docker/docker-compose (`docker compose up --build`)
 - [x] Testes automatizados (Jest + Supertest)
 - [x] Documentação da API com Swagger/OpenAPI (`/docs`)
+- [x] Integração opcional com IA real (Hugging Face e OpenAI), além da heurística padrão
 - [ ] Detecção de chamados duplicados/similares — não implementado (ver limitações)
 - [ ] Deploy funcional — não incluído por padrão; ver observação abaixo
 
