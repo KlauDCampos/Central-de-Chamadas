@@ -1,0 +1,65 @@
+// Schema do banco de dados relacional (SQLite por padrão, compatível com Postgres/MySQL
+// bastando trocar "provider" e o DATABASE_URL no .env)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id        String   @id @default(uuid())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  papel     String   @default("SOLICITANTE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chamadosCriados   Chamado[]    @relation("ChamadosSolicitante")
+  chamadosAtribuidos Chamado[]   @relation("ChamadosResponsavel")
+  comentarios       Comentario[]
+
+  @@map("usuarios")
+}
+
+model Chamado {
+  id                   String    @id @default(uuid())
+  titulo               String
+  descricao            String
+  categoria            String
+  prioridade           String    @default("BAIXA")
+  status               String    @default("ABERTO")
+  origemClassificacao  String    @default("MANUAL")
+
+  solicitanteId String
+  solicitante   Usuario  @relation("ChamadosSolicitante",fields: [solicitanteId],references: [id])
+
+  responsavelId String?
+  responsavel   Usuario? @relation("ChamadosResponsavel",fields: [responsavelId],references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  comentarios Comentario[]
+
+  @@map("chamados")
+}
+
+model Comentario {
+  id        String   @id @default(uuid())
+  texto     String
+
+  chamadoId String
+  chamado   Chamado  @relation(fields: [chamadoId], references: [id], onDelete: Cascade)
+
+  autorId   String
+  autor     Usuario  @relation(fields: [autorId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("comentarios")
+}
