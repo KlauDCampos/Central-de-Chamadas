@@ -1,0 +1,168 @@
+{
+  "info": {
+    "name": "Helpdesk API - Fadex Desafio Técnico",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "tokenAdmin", "value": "" },
+    { "key": "tokenSolicitante", "value": "" },
+    { "key": "chamadoId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login ADMIN",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@fadex.org.br\",\n  \"senha\": \"admin123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login SOLICITANTE",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"solicitante@fadex.org.br\",\n  \"senha\": \"solicitante123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Registrar novo usuário",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Novo Colaborador\",\n  \"email\": \"novo@fadex.org.br\",\n  \"senha\": \"senha123\",\n  \"papel\": \"SOLICITANTE\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chamados",
+      "item": [
+        {
+          "name": "Criar chamado (triagem automática)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenSolicitante}}" }
+            ],
+            "url": "{{baseUrl}}/api/chamados",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Sistema fora do ar, urgente\",\n  \"descricao\": \"O sistema de vendas caiu para todos os usuários e ninguém consegue trabalhar. Preciso de ajuda imediata.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Listar chamados (com filtros)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }],
+            "url": "{{baseUrl}}/api/chamados?status=ABERTO&prioridade=ALTA"
+          }
+        },
+        {
+          "name": "Detalhe do chamado",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenSolicitante}}" }],
+            "url": "{{baseUrl}}/api/chamados/{{chamadoId}}"
+          }
+        },
+        {
+          "name": "Atualizar status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }
+            ],
+            "url": "{{baseUrl}}/api/chamados/{{chamadoId}}/status",
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"EM_ANDAMENTO\"\n}" }
+          }
+        },
+        {
+          "name": "Atribuir responsável (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }
+            ],
+            "url": "{{baseUrl}}/api/chamados/{{chamadoId}}/responsavel",
+            "body": { "mode": "raw", "raw": "{\n  \"responsavelId\": \"COLE_AQUI_O_ID_DO_ADMIN\"\n}" }
+          }
+        },
+        {
+          "name": "Corrigir classificação da IA (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }
+            ],
+            "url": "{{baseUrl}}/api/chamados/{{chamadoId}}/classificacao",
+            "body": { "mode": "raw", "raw": "{\n  \"categoria\": \"Rede\",\n  \"prioridade\": \"MEDIA\"\n}" }
+          }
+        },
+        {
+          "name": "Adicionar comentário",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenSolicitante}}" }
+            ],
+            "url": "{{baseUrl}}/api/chamados/{{chamadoId}}/comentarios",
+            "body": { "mode": "raw", "raw": "{\n  \"texto\": \"Já reiniciei o computador e o problema continua.\"\n}" }
+          }
+        },
+        {
+          "name": "Excluir/cancelar chamado",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenSolicitante}}" }],
+            "url": "{{baseUrl}}/api/chamados/{{chamadoId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Indicadores (REST)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }],
+            "url": "{{baseUrl}}/api/dashboard/indicadores"
+          }
+        },
+        {
+          "name": "Stream de indicadores (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "text/event-stream" }],
+            "url": "{{baseUrl}}/api/dashboard/stream?token={{tokenAdmin}}"
+          }
+        }
+      ]
+    }
+  ]
+}
