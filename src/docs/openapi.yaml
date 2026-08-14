@@ -1,0 +1,241 @@
+openapi: 3.0.3
+info:
+  title: Helpdesk API - Central de Chamados com Triagem Inteligente
+  description: >
+    API REST para central de chamados internos (helpdesk) com triagem automática
+    por IA (heurística) e indicadores em tempo real (SSE). Desafio técnico Fadex.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+tags:
+  - name: Auth
+  - name: Chamados
+  - name: Dashboard
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Usuario:
+      type: object
+      properties:
+        id: { type: string }
+        nome: { type: string }
+        email: { type: string }
+        papel: { type: string, enum: [ADMIN, SOLICITANTE] }
+    Chamado:
+      type: object
+      properties:
+        id: { type: string }
+        titulo: { type: string }
+        descricao: { type: string }
+        categoria: { type: string }
+        prioridade: { type: string, enum: [BAIXA, MEDIA, ALTA] }
+        status: { type: string, enum: [ABERTO, EM_ANDAMENTO, RESOLVIDO, FECHADO] }
+        origemClassificacao: { type: string, enum: [IA, MANUAL] }
+        solicitanteId: { type: string }
+        responsavelId: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+security:
+  - bearerAuth: []
+paths:
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Cadastrar novo usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, email, senha]
+              properties:
+                nome: { type: string }
+                email: { type: string }
+                senha: { type: string }
+                papel: { type: string, enum: [ADMIN, SOLICITANTE] }
+      responses:
+        '201':
+          description: 'Usuário criado com token JWT'
+        '409':
+          description: 'E-mail já cadastrado'
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Autenticar usuário e obter token JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, senha]
+              properties:
+                email: { type: string }
+                senha: { type: string }
+      responses:
+        '200':
+          description: 'Login efetuado, retorna token JWT'
+        '401':
+          description: 'Credenciais inválidas'
+  /api/chamados:
+    post:
+      tags: [Chamados]
+      summary: Criar chamado (com triagem automática por IA quando categoria/prioridade não informadas)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [titulo, descricao]
+              properties:
+                titulo: { type: string }
+                descricao: { type: string }
+                categoria: { type: string }
+                prioridade: { type: string, enum: [BAIXA, MEDIA, ALTA] }
+      responses:
+        '201':
+          description: 'Chamado criado'
+        '401':
+          description: 'Não autenticado'
+    get:
+      tags: [Chamados]
+      summary: Listar chamados (ADMIN vê todos, SOLICITANTE vê apenas os próprios)
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [ABERTO, EM_ANDAMENTO, RESOLVIDO, FECHADO] }
+        - in: query
+          name: prioridade
+          schema: { type: string, enum: [BAIXA, MEDIA, ALTA] }
+        - in: query
+          name: categoria
+          schema: { type: string }
+        - in: query
+          name: pagina
+          schema: { type: integer }
+        - in: query
+          name: tamanhoPagina
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 'Lista paginada de chamados'
+  /api/chamados/{id}:
+    get:
+      tags: [Chamados]
+      summary: Detalhe de um chamado (com histórico de comentários)
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses:
+        '200':
+          description: 'Chamado encontrado'
+        '403':
+          description: 'Sem permissão'
+        '404':
+          description: 'Chamado não encontrado'
+    delete:
+      tags: [Chamados]
+      summary: Excluir/cancelar chamado
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses:
+        '204':
+          description: 'Removido com sucesso'
+        '403':
+          description: 'Sem permissão'
+        '404':
+          description: 'Chamado não encontrado'
+  /api/chamados/{id}/status:
+    patch:
+      tags: [Chamados]
+      summary: Atualizar status do chamado (respeita regras de transição; não permite reabrir FECHADO)
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [ABERTO, EM_ANDAMENTO, RESOLVIDO, FECHADO] }
+      responses:
+        '200':
+          description: 'Status atualizado'
+        '400':
+          description: 'Transição de status inválida'
+  /api/chamados/{id}/responsavel:
+    patch:
+      tags: [Chamados]
+      summary: Atribuir/reatribuir responsável (somente ADMIN)
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [responsavelId]
+              properties:
+                responsavelId: { type: string }
+      responses:
+        '200':
+          description: 'Responsável atribuído'
+        '403':
+          description: 'Apenas ADMIN pode reatribuir'
+  /api/chamados/{id}/classificacao:
+    patch:
+      tags: [Chamados]
+      summary: Corrigir/confirmar classificação sugerida pela IA (somente ADMIN)
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                categoria: { type: string }
+                prioridade: { type: string, enum: [BAIXA, MEDIA, ALTA] }
+      responses:
+        '200':
+          description: 'Classificação corrigida'
+  /api/chamados/{id}/comentarios:
+    post:
+      tags: [Chamados]
+      summary: Adicionar comentário/interação ao histórico do chamado
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [texto]
+              properties:
+                texto: { type: string }
+      responses:
+        '201':
+          description: 'Comentário adicionado'
+  /api/dashboard/indicadores:
+    get:
+      tags: [Dashboard]
+      summary: Indicadores agregados (contagem por status/prioridade)
+      responses:
+        '200':
+          description: 'Indicadores atuais'
+  /api/dashboard/stream:
+    get:
+      tags: [Dashboard]
+      summary: Stream de indicadores em tempo real via Server-Sent Events (SSE)
+      description: >
+        Aceita o token via header Authorization ou via query string (?token=...),
+        já que o EventSource do navegador não envia headers customizados.
+      responses:
+        '200':
+          description: 'Conexão SSE aberta, eventos "snapshot", "indicadores" e "alerta-prioridade-alta"'
